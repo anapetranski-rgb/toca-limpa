@@ -1,0 +1,1707 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Toca Limpa - Gestão da Casa & Micro-Tarefas com o Remi</title>
+  
+  <!-- Meta tags para PWA / Mobile Web App -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="theme-color" content="#8b5cf6" id="theme-color-meta" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐭</text></svg>" />
+
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            theme: {
+              50: 'var(--color-theme-50)',
+              100: 'var(--color-theme-100)',
+              200: 'var(--color-theme-200)',
+              300: 'var(--color-theme-300)',
+              400: 'var(--color-theme-400)',
+              500: 'var(--color-theme-500)',
+              600: 'var(--color-theme-600)',
+              700: 'var(--color-theme-700)',
+              800: 'var(--color-theme-800)',
+            }
+          },
+          animation: {
+            'bounce-slow': 'bounce 2.2s infinite',
+            'pulse-soft': 'pulse 2.8s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'float': 'float 3s ease-in-out infinite',
+            'wiggle': 'wiggle 1.2s ease-in-out infinite',
+            'tail-wag': 'tailWag 1.8s ease-in-out infinite',
+          },
+          keyframes: {
+            float: {
+              '0%, 100%': { transform: 'translateY(0px)' },
+              '50%': { transform: 'translateY(-5px)' },
+            },
+            wiggle: {
+              '0%, 100%': { transform: 'rotate(-3deg)' },
+              '50%': { transform: 'rotate(3deg)' },
+            },
+            tailWag: {
+              '0%, 100%': { transform: 'rotate(0deg)' },
+              '50%': { transform: 'rotate(8deg)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React 18 & Babel CDN -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Canvas Confetti CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+
+  <!-- Firebase v9 Compat CDN -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    /* Estilos globais e variáveis de tema dinâmicas */
+    :root {
+      --color-theme-50: #f5f3ff;
+      --color-theme-100: #ede9fe;
+      --color-theme-200: #ddd6fe;
+      --color-theme-300: #c4b5fd;
+      --color-theme-400: #a78bfa;
+      --color-theme-500: #8b5cf6;
+      --color-theme-600: #7c3aed;
+      --color-theme-700: #6d28d9;
+      --color-theme-800: #5b21b6;
+      --color-theme-primary: #8b5cf6;
+      --theme-shadow-glow: rgba(139, 92, 246, 0.18);
+    }
+
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+      overscroll-behavior-y: none;
+    }
+
+    /* Scrollbar delicada */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+
+    /* Transição suave ao trocar de tema */
+    .theme-transition {
+      transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .theme-glow {
+      box-shadow: 0 4px 18px var(--theme-shadow-glow);
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-theme-200 selection:text-theme-800">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef } = React;
+
+    // =========================================================================
+    // ⚙️ CONFIGURAÇÃO DO FIREBASE (COLE SUAS CHAVES AQUI)
+    // =========================================================================
+    // Se mantiver "SUA_...", o app ativará o MODO LOCAL (LocalStorage) de forma
+    // automática e 100% funcional sem dar nenhum erro!
+    const firebaseConfig = {
+      apiKey: "SUA_API_KEY",
+      authDomain: "SEU_PROJETO.firebaseapp.com",
+      projectId: "SEU_PROJECT_ID",
+      storageBucket: "SEU_PROJETO.appspot.com",
+      messagingSenderId: "SEU_MESSAGING_SENDER_ID",
+      appId: "SEU_APP_ID"
+    };
+
+    // Inicialização do Firebase com Fallback Inteligente
+    let db = null;
+    let isFirebaseReady = false;
+
+    try {
+      if (
+        firebaseConfig.apiKey && 
+        firebaseConfig.apiKey !== "SUA_API_KEY" && 
+        firebaseConfig.projectId !== "SEU_PROJECT_ID"
+      ) {
+        if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+        }
+        db = firebase.firestore();
+        isFirebaseReady = true;
+        console.log("🔥 Firebase Firestore conectado com sucesso!");
+      } else {
+        console.info("💡 Modo Local (LocalStorage) ativo. Preencha firebaseConfig para sincronização em tempo real.");
+      }
+    } catch (err) {
+      console.warn("Aviso ao inicializar Firebase:", err.message);
+      isFirebaseReady = false;
+    }
+
+    // =========================================================================
+    // 🎨 PALETAS DE CORES DINÂMICAS PARA OS MORADORES
+    // =========================================================================
+    const PALETTES = {
+      purple: {
+        id: 'purple',
+        name: 'Lilás / Roxo',
+        dotClass: 'bg-violet-500',
+        primary: '#8b5cf6',
+        glow: 'rgba(139, 92, 246, 0.22)',
+        variables: {
+          '--color-theme-50': '#f5f3ff',
+          '--color-theme-100': '#ede9fe',
+          '--color-theme-200': '#ddd6fe',
+          '--color-theme-300': '#c4b5fd',
+          '--color-theme-400': '#a78bfa',
+          '--color-theme-500': '#8b5cf6',
+          '--color-theme-600': '#7c3aed',
+          '--color-theme-700': '#6d28d9',
+          '--color-theme-800': '#5b21b6',
+          '--color-theme-primary': '#8b5cf6',
+          '--theme-shadow-glow': 'rgba(139, 92, 246, 0.22)'
+        }
+      },
+      pink: {
+        id: 'pink',
+        name: 'Rosa Doce',
+        dotClass: 'bg-pink-500',
+        primary: '#ec4899',
+        glow: 'rgba(236, 72, 153, 0.22)',
+        variables: {
+          '--color-theme-50': '#fdf2f8',
+          '--color-theme-100': '#fce7f3',
+          '--color-theme-200': '#fbcfe8',
+          '--color-theme-300': '#f9a8d4',
+          '--color-theme-400': '#f472b6',
+          '--color-theme-500': '#ec4899',
+          '--color-theme-600': '#db2777',
+          '--color-theme-700': '#be185d',
+          '--color-theme-800': '#9d174d',
+          '--color-theme-primary': '#ec4899',
+          '--theme-shadow-glow': 'rgba(236, 72, 153, 0.22)'
+        }
+      },
+      emerald: {
+        id: 'emerald',
+        name: 'Verde Menta',
+        dotClass: 'bg-emerald-500',
+        primary: '#10b981',
+        glow: 'rgba(16, 185, 129, 0.22)',
+        variables: {
+          '--color-theme-50': '#ecfdf5',
+          '--color-theme-100': '#d1fae5',
+          '--color-theme-200': '#a7f3d0',
+          '--color-theme-300': '#6ee7b7',
+          '--color-theme-400': '#34d399',
+          '--color-theme-500': '#10b981',
+          '--color-theme-600': '#059669',
+          '--color-theme-700': '#047857',
+          '--color-theme-800': '#065f46',
+          '--color-theme-primary': '#10b981',
+          '--theme-shadow-glow': 'rgba(16, 185, 129, 0.22)'
+        }
+      },
+      sky: {
+        id: 'sky',
+        name: 'Azul Céu',
+        dotClass: 'bg-sky-500',
+        primary: '#0ea5e9',
+        glow: 'rgba(14, 165, 233, 0.22)',
+        variables: {
+          '--color-theme-50': '#f0f9ff',
+          '--color-theme-100': '#e0f2fe',
+          '--color-theme-200': '#bae6fd',
+          '--color-theme-300': '#7dd3fc',
+          '--color-theme-400': '#38bdf8',
+          '--color-theme-500': '#0ea5e9',
+          '--color-theme-600': '#0284c7',
+          '--color-theme-700': '#0369a1',
+          '--color-theme-800': '#075985',
+          '--color-theme-primary': '#0ea5e9',
+          '--theme-shadow-glow': 'rgba(14, 165, 233, 0.22)'
+        }
+      },
+      amber: {
+        id: 'amber',
+        name: 'Amarelo Sol',
+        dotClass: 'bg-amber-500',
+        primary: '#f59e0b',
+        glow: 'rgba(245, 158, 11, 0.22)',
+        variables: {
+          '--color-theme-50': '#fffbeb',
+          '--color-theme-100': '#fef3c7',
+          '--color-theme-200': '#fde68a',
+          '--color-theme-300': '#fcd34d',
+          '--color-theme-400': '#fbbf24',
+          '--color-theme-500': '#f59e0b',
+          '--color-theme-600': '#d97706',
+          '--color-theme-700': '#b45309',
+          '--color-theme-800': '#92400e',
+          '--color-theme-primary': '#f59e0b',
+          '--theme-shadow-glow': 'rgba(245, 158, 11, 0.22)'
+        }
+      },
+      coral: {
+        id: 'coral',
+        name: 'Coral Vibrante',
+        dotClass: 'bg-orange-500',
+        primary: '#f97316',
+        glow: 'rgba(249, 115, 22, 0.22)',
+        variables: {
+          '--color-theme-50': '#fff7ed',
+          '--color-theme-100': '#ffedd5',
+          '--color-theme-200': '#fed7aa',
+          '--color-theme-300': '#fdba74',
+          '--color-theme-400': '#fb923c',
+          '--color-theme-500': '#f97316',
+          '--color-theme-600': '#ea580c',
+          '--color-theme-700': '#c2410c',
+          '--color-theme-800': '#9a3412',
+          '--color-theme-primary': '#f97316',
+          '--theme-shadow-glow': 'rgba(249, 115, 22, 0.22)'
+        }
+      }
+    };
+
+    // Aplica a paleta de cores no :root dinamicamente
+    const applyThemePalette = (paletteKey) => {
+      const selected = PALETTES[paletteKey] || PALETTES.purple;
+      const root = document.documentElement;
+      Object.entries(selected.variables).forEach(([varName, val]) => {
+        root.style.setProperty(varName, val);
+      });
+      const meta = document.getElementById('theme-color-meta');
+      if (meta) meta.setAttribute('content', selected.primary);
+    };
+
+    // =========================================================================
+    // 🗓️ GESTOR DE CICLO SEMANAL (RESET AUTOMÁTICO DOMINGO À MEIA-NOITE)
+    // =========================================================================
+    const getCurrentWeekKey = () => {
+      const now = new Date();
+      const day = now.getDay(); // 0 é domingo
+      const sunday = new Date(now);
+      sunday.setDate(now.getDate() - day);
+      sunday.setHours(0, 0, 0, 0);
+      
+      const yyyy = sunday.getFullYear();
+      const mm = String(sunday.getMonth() + 1).padStart(2, '0');
+      const dd = String(sunday.getDate()).padStart(2, '0');
+      return `week-${yyyy}-${mm}-${dd}`;
+    };
+
+    const getWeekDisplayRange = () => {
+      const now = new Date();
+      const day = now.getDay();
+      const sunday = new Date(now);
+      sunday.setDate(now.getDate() - day);
+      
+      const saturday = new Date(sunday);
+      saturday.setDate(sunday.getDate() + 6);
+      
+      const format = (d) => `${d.getDate()}/${d.getMonth() + 1}`;
+      return `${format(sunday)} a ${format(saturday)}`;
+    };
+
+    // Tarefas padrão iniciais para inspirar a casa
+    const DEFAULT_HOUSEHOLD_TASKS = [
+      { id: 'task-1', title: 'Trocar roupa de cama e toalhas', category: 'Quarto', icon: '🛏️' },
+      { id: 'task-2', title: 'Limpar fogão e bancada da pia', category: 'Cozinha', icon: '🍳' },
+      { id: 'task-3', title: 'Passar pano e aspirar a sala', category: 'Sala', icon: '🧹' },
+      { id: 'task-4', title: 'Higienizar pia e vaso do banheiro', category: 'Banheiro', icon: '🧼' },
+      { id: 'task-5', title: 'Lavar panos de prato e chão', category: 'Lavanderia', icon: '🧺' },
+      { id: 'task-6', title: 'Colocar os sacos de lixo na calçada', category: 'Geral', icon: '🗑️' },
+      { id: 'task-7', title: 'Regar as plantinhas da casa', category: 'Geral', icon: '🌱' },
+      { id: 'task-8', title: 'Trocar serragem/limpar a gaiola do Remi', category: 'Remi 🐭', icon: '✨' }
+    ];
+
+    // =========================================================================
+    // 🐭 MASCOTE REMI: RATINHO TWISTER CINZA COM ORELHAS ARREDONDADAS
+    // Inspirado fielmente nas fotos do Remi: pelagem chumbo/cinza escuro,
+    // orelhinhas grandes rosadas nas laterais, patinhas com luvinhas brancas,
+    // olhinhos pretos brilhantes e bigodinhos delicados.
+    // =========================================================================
+    const RemiMascot = ({ progress }) => {
+      const state = useMemo(() => {
+        if (progress >= 100) {
+          return {
+            title: "Reis da Toca Limpa!",
+            subtitle: "100% da semana batida! Remi tá coroado e orgulhoso! 👑🏆",
+            mood: 'winner',
+            statusPill: 'Meta da Semana Batida!',
+            tagBg: 'bg-amber-100 text-amber-800 border-amber-300'
+          };
+        } else if (progress >= 75) {
+          return {
+            title: "Uhuuu! Quase lá!",
+            subtitle: "Remi dando pulinhos de alegria! Falta muito pouco! 🎉✨",
+            mood: 'party',
+            statusPill: 'Reta Final',
+            tagBg: 'bg-theme-100 text-theme-800 border-theme-300'
+          };
+        } else if (progress >= 50) {
+          return {
+            title: "Metade garantida!",
+            subtitle: "Remi todo feliz roendo um petisco merecido! 🥜😋",
+            mood: 'eating',
+            statusPill: 'Bom Ritmo',
+            tagBg: 'bg-emerald-100 text-emerald-800 border-emerald-300'
+          };
+        } else if (progress >= 25) {
+          return {
+            title: "Pegando no tranco!",
+            subtitle: "Remi curioso com orelhinhas em pé: 'Bora arrumar a toca?' 👀",
+            mood: 'awake',
+            statusPill: 'Iniciando',
+            tagBg: 'bg-blue-100 text-blue-800 border-blue-300'
+          };
+        } else {
+          return {
+            title: "Remi Zzz... enroladinho",
+            subtitle: "Dormindo quentinho na caminha esperando o primeiro tick... 😴",
+            mood: 'sleeping',
+            statusPill: 'Preguicinha',
+            tagBg: 'bg-slate-100 text-slate-700 border-slate-300'
+          };
+        }
+      }, [progress]);
+
+      return (
+        <div className="relative overflow-hidden bg-white rounded-3xl p-5 shadow-sm border border-theme-200/90 theme-transition theme-glow">
+          {/* Fundo decorativo sutil com a cor tema atual */}
+          <div className="absolute -top-12 -right-12 w-36 h-36 bg-theme-100/70 rounded-full blur-2xl pointer-events-none"></div>
+          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-theme-50/90 rounded-full blur-xl pointer-events-none"></div>
+
+          <div className="flex items-center gap-4 relative z-10">
+            {/* CONTAINER DA ILUSTRAÇÃO DO REMI */}
+            <div className="flex-shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-gradient-to-b from-slate-100 via-white to-theme-50 border border-theme-200 flex items-center justify-center shadow-inner relative group select-none">
+              
+              {/* 1. REMI DORMINDO ENROLADINHO (0% a 24%) */}
+              {state.mood === 'sleeping' && (
+                <div className="relative flex flex-col items-center">
+                  {/* Zzz flutuante animado */}
+                  <div className="absolute -top-4 -right-1 text-xs font-bold text-theme-500 animate-float">
+                    Z<span className="text-[10px]">z</span><span className="text-[8px]">z</span>...
+                  </div>
+                  <svg className="w-20 h-20 transition-transform group-hover:scale-105" viewBox="0 0 100 100" fill="none">
+                    {/* Caminha acolchoada / tubo de madeira sutil */}
+                    <ellipse cx="50" cy="74" rx="38" ry="12" fill="#E2E8F0" />
+                    
+                    {/* Rabinho comprido rosado enroladinho ao redor do corpo */}
+                    <path d="M 68 66 C 82 72, 70 82, 48 80 C 26 78, 22 70, 32 68" stroke="#FDA4AF" strokeWidth="4" strokeLinecap="round" fill="none"/>
+                    
+                    {/* Corpo do Remi cinza chumbo enroladinho */}
+                    <ellipse cx="50" cy="58" rx="27" ry="20" fill="#334155" stroke="#1E293B" strokeWidth="1.5" />
+                    
+                    {/* Orelhas grandes arredondadas nas laterais (estilo twister) relaxadas */}
+                    <circle cx="30" cy="46" r="11" fill="#475569" stroke="#1E293B" strokeWidth="1.5"/>
+                    <circle cx="30" cy="46" r="7.5" fill="#FDA4AF"/>
+                    
+                    <circle cx="68" cy="45" r="11" fill="#475569" stroke="#1E293B" strokeWidth="1.5"/>
+                    <circle cx="68" cy="45" r="7.5" fill="#FDA4AF"/>
+                    
+                    {/* Cabeça do Remi */}
+                    <circle cx="49" cy="55" r="18" fill="#334155" />
+                    
+                    {/* Olhinhos dormindo serenos (arcos fofos) */}
+                    <path d="M 40 54 Q 44 57 48 54" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round"/>
+                    <path d="M 54 54 Q 58 57 62 54" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round"/>
+                    
+                    {/* Narizinho rosado meigo */}
+                    <circle cx="51" cy="62" r="3" fill="#FB7185"/>
+                    
+                    {/* Patinhas com luva branca recolhidinhas */}
+                    <ellipse cx="44" cy="67" rx="4" ry="3" fill="#F8FAFC" stroke="#E2E8F0" strokeWidth="1"/>
+                    <ellipse cx="56" cy="67" rx="4" ry="3" fill="#F8FAFC" stroke="#E2E8F0" strokeWidth="1"/>
+                    
+                    {/* Bigodinhos brancos delicados */}
+                    <line x1="36" y1="62" x2="24" y2="60" stroke="#CBD5E1" strokeWidth="1.2" strokeLinecap="round"/>
+                    <line x1="36" y1="64" x2="23" y2="66" stroke="#CBD5E1" strokeWidth="1.2" strokeLinecap="round"/>
+                    <line x1="64" y1="62" x2="76" y2="60" stroke="#CBD5E1" strokeWidth="1.2" strokeLinecap="round"/>
+                    <line x1="64" y1="64" x2="77" y2="66" stroke="#CBD5E1" strokeWidth="1.2" strokeLinecap="round"/>
+                  </svg>
+                </div>
+              )}
+
+              {/* 2. REMI CURIOZO COM ORELHINHAS EM PÉ (25% a 49%) */}
+              {state.mood === 'awake' && (
+                <div className="relative flex flex-col items-center animate-wiggle">
+                  <svg className="w-20 h-20 transition-transform group-hover:scale-105" viewBox="0 0 100 100" fill="none">
+                    {/* Rabinho saindo atrás */}
+                    <path d="M 68 70 Q 84 65 82 50" stroke="#FDA4AF" strokeWidth="3.5" strokeLinecap="round" fill="none"/>
+                    
+                    {/* Corpo cinza escuro */}
+                    <ellipse cx="50" cy="64" rx="24" ry="20" fill="#334155" stroke="#1E293B" strokeWidth="1.5"/>
+                    <ellipse cx="50" cy="66" rx="14" ry="12" fill="#475569" />
+                    
+                    {/* Orelhas grandes arredondadas bem empinadas nas laterais da cabeça */}
+                    <circle cx="27" cy="29" r="14" fill="#475569" stroke="#1E293B" strokeWidth="1.5"/>
+                    <circle cx="27" cy="29" r="9" fill="#FDA4AF"/>
+                    
+                    <circle cx="73" cy="29" r="14" fill="#475569" stroke="#1E293B" strokeWidth="1.5"/>
+                    <circle cx="73" cy="29" r="9" fill="#FDA4AF"/>
+                    
+                    {/* Cabeça do Remi */}
+                    <ellipse cx="50" cy="50" rx="22" ry="20" fill="#334155" stroke="#1E293B" strokeWidth="1.5"/>
+                    
+                    {/* Olhinhos pretos brilhantes bem abertos e atentos */}
+                    <circle cx="41" cy="46" r="4.5" fill="#0F172A"/>
+                    <circle cx="42.5" cy="44.5" r="1.6" fill="#FFFFFF"/>
+                    
+                    <circle cx="59" cy="46" r="4.5" fill="#0F172A"/>
+                    <circle cx="60.5" cy="44.5" r="1.6" fill="#FFFFFF"/>
+                    
+                    {/* Bochechinhas coradas meigas */}
+                    <circle cx="34" cy="54" r="4" fill="#FDA4AF" opacity="0.6"/>
+                    <circle cx="66" cy="54" r="4" fill="#FDA4AF" opacity="0.6"/>
+                    
+                    {/* Focinho e narizinho rosa */}
+                    <ellipse cx="50" cy="56" rx="6" ry="4" fill="#475569"/>
+                    <circle cx="50" cy="55" r="2.8" fill="#FB7185"/>
+                    <path d="M 47 59 Q 50 62 53 59" stroke="#94A3B8" strokeWidth="1.5" strokeLinecap="round"/>
+                    
+                    {/* Patinhas dianteiras com luvinhas brancas apoiadas curiosas */}
+                    <ellipse cx="40" cy="72" rx="4.5" ry="3.5" fill="#F8FAFC" stroke="#E2E8F0" strokeWidth="1.2"/>
+                    <ellipse cx="60" cy="72" rx="4.5" ry="3.5" fill="#F8FAFC" stroke="#E2E8F0" strokeWidth="1.2"/>
+                    
+                    {/* Bigodes compridos brancos característicos do Remi */}
+                    <line x1="36" y1="55" x2="16" y2="52" stroke="#CBD5E1" strokeWidth="1.2" strokeLinecap="round"/>
+                    <line x1="36" y1="58" x2="18" y2="61" stroke="#CBD5E1" strokeWidth="1.2" strokeLinecap="round"/>
+                    <line x1="64" y1="55" x2="84" y2="52" stroke="#CBD5E1" strokeWidth="1.2" strokeLinecap="round"/>
+                    <line x1="64" y1="58" x2="82" y2="61" stroke="#CBD5E1" strokeWidth="1.2" strokeLinecap="round"/>
+                  </svg>
+                </div>
+              )}
+
+              {/* 3. REMI FELIZ ROENDO UM PETISCO (50% a 74%) */}
+              {state.mood === 'eating' && (
+                <div className="relative flex flex-col items-center">
+                  <svg className="w-20 h-20 transition-transform group-hover:scale-105" viewBox="0 0 100 100" fill="none">
+                    {/* Rabinho balançando com felicidade */}
+                    <path d="M 72 68 Q 86 62 80 46" stroke="#FDA4AF" strokeWidth="3.5" strokeLinecap="round" fill="none"/>
+                    
+                    {/* Corpo cinza escuro sentado */}
+                    <ellipse cx="50" cy="62" rx="25" ry="22" fill="#334155" stroke="#1E293B" strokeWidth="1.5"/>
+                    
+                    {/* Orelhas arredondadas alegres */}
+                    <circle cx="26" cy="27" r="14" fill="#475569" stroke="#1E293B" strokeWidth="1.5"/>
+                    <circle cx="26" cy="27" r="9" fill="#FDA4AF"/>
+                    
+                    <circle cx="74" cy="27" r="14" fill="#475569" stroke="#1E293B" strokeWidth="1.5"/>
+                    <circle cx="74" cy="27" r="9" fill="#FDA4AF"/>
+                    
+                    {/* Cabeça do Remi */}
+                    <ellipse cx="50" cy="48" rx="23" ry="20" fill="#334155" stroke="#1E293B" strokeWidth="1.5"/>
+                    
+                    {/* Olhinhos apertadinhos de satisfação saborosa (^_^ style) */}
+                    <path d="M 38 46 Q 42 42 46 46" stroke="#F1F5F9" strokeWidth="2.5" strokeLinecap="round"/>
+                    <path d="M 54 46 Q 58 42 62 46" stroke="#F1F5F9" strokeWidth="2.5" strokeLinecap="round"/>
+                    
+                    {/* Bochechinhas cheias de comida */}
+                    <circle cx="34" cy="54" r="5.5" fill="#FDA4AF" opacity="0.8"/>
+                    <circle cx="66" cy="54" r="5.5" fill="#FDA4AF" opacity="0.8"/>
+                    
+                    {/* Narizinho */}
+                    <circle cx="50" cy="52" r="2.8" fill="#FB7185"/>
+                    
+                    {/* Petisco / Semente de girassol crocante que ele tá comendo */}
+                    <path d="M 44 65 C 44 59, 56 59, 56 65 C 56 71, 44 71, 44 65 Z" fill="#F59E0B" stroke="#B45309" strokeWidth="1.2"/>
+                    <line x1="50" y1="61" x2="50" y2="69" stroke="#FDE68A" strokeWidth="1.2"/>
+                    
+                    {/* Patinhas com luva branca segurando o petisco firmemente */}
+                    <circle cx="42" cy="65" r="4.5" fill="#F8FAFC" stroke="#E2E8F0" strokeWidth="1.2"/>
+                    <circle cx="58" cy="65" r="4.5" fill="#F8FAFC" stroke="#E2E8F0" strokeWidth="1.2"/>
+                    
+                    {/* Bigodes */}
+                    <line x1="34" y1="53" x2="16" y2="50" stroke="#CBD5E1" strokeWidth="1.2" strokeLinecap="round"/>
+                    <line x1="34" y1="56" x2="18" y2="60" stroke="#CBD5E1" strokeWidth="1.2" strokeLinecap="round"/>
+                    <line x1="66" y1="53" x2="84" y2="50" stroke="#CBD5E1" strokeWidth="1.2" strokeLinecap="round"/>
+                    <line x1="66" y1="56" x2="82" y2="60" stroke="#CBD5E1" strokeWidth="1.2" strokeLinecap="round"/>
+                  </svg>
+                </div>
+              )}
+
+              {/* 4. REMI FESTEJANDO E SALTANDO (75% a 99%) */}
+              {state.mood === 'party' && (
+                <div className="relative flex flex-col items-center animate-bounce-slow">
+                  <svg className="w-20 h-20 transition-transform group-hover:scale-105" viewBox="0 0 100 100" fill="none">
+                    {/* Chapéuzinho de festa com pompom colorido */}
+                    <polygon points="50,4 40,24 60,24" fill="var(--color-theme-500)"/>
+                    <circle cx="50" cy="4" r="3" fill="#FBBF24"/>
+                    <line x1="43" y1="16" x2="57" y2="13" stroke="#FFFFFF" strokeWidth="1.8"/>
+                    
+                    {/* Rabinho animado */}
+                    <path d="M 72 70 Q 88 64 85 45" stroke="#FDA4AF" strokeWidth="3.5" strokeLinecap="round" fill="none"/>
+                    
+                    {/* Corpo cinza escuro */}
+                    <ellipse cx="50" cy="63" rx="24" ry="21" fill="#334155" stroke="#1E293B" strokeWidth="1.5"/>
+                    
+                    {/* Orelhas grandes arredondadas */}
+                    <circle cx="26" cy="28" r="14" fill="#475569" stroke="#1E293B" strokeWidth="1.5"/>
+                    <circle cx="26" cy="28" r="9" fill="#FDA4AF"/>
+                    
+                    <circle cx="74" cy="28" r="14" fill="#475569" stroke="#1E293B" strokeWidth="1.5"/>
+                    <circle cx="74" cy="28" r="9" fill="#FDA4AF"/>
+                    
+                    {/* Cabeça do Remi */}
+                    <ellipse cx="50" cy="50" rx="22" ry="19" fill="#334155" stroke="#1E293B" strokeWidth="1.5"/>
+                    
+                    {/* Olhinhos super felizes */}
+                    <path d="M 38 48 Q 42 42 46 48" stroke="#F8FAFC" strokeWidth="2.8" strokeLinecap="round"/>
+                    <path d="M 54 48 Q 58 42 62 48" stroke="#F8FAFC" strokeWidth="2.8" strokeLinecap="round"/>
+                    
+                    {/* Narizinho */}
+                    <circle cx="50" cy="53" r="2.8" fill="#FB7185"/>
+                    
+                    {/* Sorrisão aberto feliz */}
+                    <path d="M 45 58 Q 50 64 55 58 Z" fill="#E11D48"/>
+                    
+                    {/* Patinhas com luva branca erguidas comemorando! */}
+                    <circle cx="33" cy="46" r="4.5" fill="#F8FAFC" stroke="#E2E8F0" strokeWidth="1.2"/>
+                    <circle cx="67" cy="46" r="4.5" fill="#F8FAFC" stroke="#E2E8F0" strokeWidth="1.2"/>
+                    
+                    {/* Estrelinhas cintilantes */}
+                    <text x="12" y="24" fontSize="13">✨</text>
+                    <text x="76" y="24" fontSize="13">🎉</text>
+                  </svg>
+                </div>
+              )}
+
+              {/* 5. REMI COM COROA / CAMPEÃO (100% META BATIDA) */}
+              {state.mood === 'winner' && (
+                <div className="relative flex flex-col items-center">
+                  {/* Coroinha dourada brilhante com pedras */}
+                  <div className="absolute -top-4 text-xl animate-bounce">👑</div>
+                  <svg className="w-20 h-20 transition-transform group-hover:scale-105" viewBox="0 0 100 100" fill="none">
+                    {/* Rabinho feliz */}
+                    <path d="M 72 70 Q 86 64 82 46" stroke="#FDA4AF" strokeWidth="3.5" strokeLinecap="round" fill="none"/>
+                    
+                    {/* Corpo cinza escuro */}
+                    <ellipse cx="50" cy="64" rx="24" ry="21" fill="#334155" stroke="#1E293B" strokeWidth="1.5"/>
+                    
+                    {/* Orelhas arredondadas nobres */}
+                    <circle cx="26" cy="30" r="14" fill="#475569" stroke="#1E293B" strokeWidth="1.5"/>
+                    <circle cx="26" cy="30" r="9" fill="#FDA4AF"/>
+                    
+                    <circle cx="74" cy="30" r="14" fill="#475569" stroke="#1E293B" strokeWidth="1.5"/>
+                    <circle cx="74" cy="30" r="9" fill="#FDA4AF"/>
+                    
+                    {/* Cabeça do Remi */}
+                    <ellipse cx="50" cy="52" rx="22" ry="20" fill="#334155" stroke="#1E293B" strokeWidth="1.5"/>
+                    
+                    {/* Óculos de sol estilo vencedor */}
+                    <rect x="34" y="45" width="13" height="10" rx="3" fill="#0F172A"/>
+                    <rect x="53" y="45" width="13" height="10" rx="3" fill="#0F172A"/>
+                    <line x1="47" y1="49" x2="53" y2="49" stroke="#0F172A" strokeWidth="2.5"/>
+                    <line x1="34" y1="48" x2="27" y2="44" stroke="#0F172A" strokeWidth="2"/>
+                    <line x1="66" y1="48" x2="73" y2="44" stroke="#0F172A" strokeWidth="2"/>
+                    <line x1="37" y1="47" x2="43" y2="52" stroke="#94A3B8" strokeWidth="1.4"/>
+                    <line x1="56" y1="47" x2="62" y2="52" stroke="#94A3B8" strokeWidth="1.4"/>
+                    
+                    {/* Narizinho */}
+                    <circle cx="50" cy="58" r="2.8" fill="#FB7185"/>
+                    
+                    {/* Sorriso orgulhoso */}
+                    <path d="M 45 63 Q 50 68 55 63" stroke="#F8FAFC" strokeWidth="2" strokeLinecap="round"/>
+                    
+                    {/* Patinhas brancas segurando troféu */}
+                    <circle cx="40" cy="71" r="4.5" fill="#F8FAFC" stroke="#E2E8F0" strokeWidth="1.2"/>
+                    <circle cx="60" cy="71" r="4.5" fill="#F8FAFC" stroke="#E2E8F0" strokeWidth="1.2"/>
+                    
+                    {/* Troféu dourado */}
+                    <text x="75" y="80" fontSize="15">🏆</text>
+                  </svg>
+                </div>
+              )}
+            </div>
+
+            {/* Balão de diálogo e status do Remi */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${state.tagBg} shadow-xs`}>
+                  {state.statusPill} • {progress}%
+                </span>
+                <span className="text-[11px] text-slate-500 font-semibold">
+                  {getWeekDisplayRange()}
+                </span>
+              </div>
+              <h3 className="font-extrabold text-slate-900 text-base sm:text-lg leading-tight truncate">
+                {state.title}
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 mt-0.5 line-clamp-2 leading-relaxed">
+                {state.subtitle}
+              </p>
+            </div>
+          </div>
+
+          {/* Barra de Progresso Semanal Estilizada */}
+          <div className="mt-4 pt-3 border-t border-slate-100">
+            <div className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-1.5">
+              <span className="flex items-center gap-1.5 font-bold text-slate-800">
+                <span className="w-2.5 h-2.5 rounded-full bg-theme-500 animate-ping"></span>
+                Meta da Toca com o Remi
+              </span>
+              <span className="text-theme-700 font-extrabold text-sm">{progress}%</span>
+            </div>
+            <div className="w-full h-4 bg-slate-100 rounded-full overflow-hidden p-0.5 shadow-inner border border-slate-200/60">
+              <div 
+                className="h-full bg-gradient-to-r from-theme-400 via-theme-500 to-theme-600 rounded-full transition-all duration-700 ease-out shadow-sm relative overflow-hidden"
+                style={{ width: `${Math.max(progress, 3)}%` }}
+              >
+                {/* Efeito de brilho correndo na barra */}
+                <div className="absolute inset-0 bg-white/20 animate-pulse-soft"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // =========================================================================
+    // 🏠 APLICAÇÃO PRINCIPAL
+    // =========================================================================
+    function App() {
+      const [activeTab, setActiveTab] = useState('household');
+
+      // Perfis dos moradores
+      const [profiles, setProfiles] = useState(() => {
+        const saved = localStorage.getItem('toca_profiles');
+        if (saved) {
+          try { return JSON.parse(saved); } catch(e){}
+        }
+        return [
+          { id: 'p1', name: 'Ana', palette: 'purple', avatar: '👩' },
+          { id: 'p2', name: 'João', palette: 'emerald', avatar: '👨' }
+        ];
+      });
+
+      // Perfil ativo atual
+      const [activeProfileId, setActiveProfileId] = useState(() => {
+        return localStorage.getItem('toca_active_profile_id') || 'p1';
+      });
+
+      const [householdTasks, setHouseholdTasks] = useState([]);
+      const [personalTasks, setPersonalTasks] = useState([]);
+
+      const [showProfileModal, setShowProfileModal] = useState(false);
+      const [showNewTaskModal, setShowNewTaskModal] = useState(false);
+      const [isOnlineFirebase, setIsOnlineFirebase] = useState(isFirebaseReady);
+
+      const [newTaskTitle, setNewTaskTitle] = useState('');
+      const [newTaskCategory, setNewTaskCategory] = useState('Geral');
+      const [newTaskIcon, setNewTaskIcon] = useState('🧹');
+
+      // Filtro da lista compartilhada: 'all' | 'mine' | 'other'
+      const [householdFilter, setHouseholdFilter] = useState('all');
+
+      // Perfil ativo
+      const currentProfile = useMemo(() => {
+        return profiles.find(p => p.id === activeProfileId) || profiles[0] || {
+          id: 'p1',
+          name: 'Eu',
+          palette: 'purple',
+          avatar: '🐭'
+        };
+      }, [profiles, activeProfileId]);
+
+      // Aplica a cor tema em tempo real para todo o app
+      useEffect(() => {
+        if (currentProfile && currentProfile.palette) {
+          applyThemePalette(currentProfile.palette);
+          localStorage.setItem('toca_active_profile_id', currentProfile.id);
+        }
+      }, [currentProfile]);
+
+      useEffect(() => {
+        localStorage.setItem('toca_profiles', JSON.stringify(profiles));
+      }, [profiles]);
+
+      const currentWeekKey = useMemo(() => getCurrentWeekKey(), []);
+
+      // -----------------------------------------------------------------------
+      // SINCRONIZAÇÃO EM TEMPO REAL: FIRESTORE + FALLBACK LOCALSTORAGE
+      // -----------------------------------------------------------------------
+      // 1. Escuta tarefas COMPARTILHADAS da casa (Toca do Remi)
+      useEffect(() => {
+        if (isFirebaseReady && db) {
+          const unsubscribeHousehold = db.collection('household_tasks')
+            .onSnapshot((snapshot) => {
+              if (snapshot.empty) {
+                DEFAULT_HOUSEHOLD_TASKS.forEach(item => {
+                  db.collection('household_tasks').doc(item.id).set({
+                    ...item,
+                    completedWeekKey: null,
+                    completedBy: null,
+                    completedColor: null,
+                    completedAt: null,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                  });
+                });
+              } else {
+                const list = [];
+                snapshot.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
+                setHouseholdTasks(list);
+              }
+              setIsOnlineFirebase(true);
+            }, (err) => {
+              console.error("Erro ao escutar Firestore (Casa):", err);
+              setIsOnlineFirebase(false);
+              loadLocalHouseholdTasks();
+            });
+
+          return () => unsubscribeHousehold();
+        } else {
+          loadLocalHouseholdTasks();
+        }
+      }, [currentWeekKey]);
+
+      // 2. Escuta tarefas PRIVADAS ("Só para Mim") COM ISOLAMENTO REAL POR USUÁRIO
+      // Cada morador tem seu próprio documento e subcoleção independente.
+      useEffect(() => {
+        if (!currentProfile || !currentProfile.id) return;
+
+        if (isFirebaseReady && db) {
+          const userPrivateCollection = db
+            .collection('user_private_spaces')
+            .doc(currentProfile.id)
+            .collection('tasks');
+
+          const unsubscribePersonal = userPrivateCollection
+            .onSnapshot((snapshot) => {
+              const list = [];
+              snapshot.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
+              // Ordena pelas mais recentes
+              list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+              setPersonalTasks(list);
+            }, (err) => {
+              console.error("Erro ao escutar Firestore (Privado):", err);
+              loadLocalPersonalTasks(currentProfile.id);
+            });
+
+          return () => unsubscribePersonal();
+        } else {
+          loadLocalPersonalTasks(currentProfile.id);
+        }
+      }, [currentProfile.id]);
+
+      const loadLocalHouseholdTasks = () => {
+        const saved = localStorage.getItem('toca_household_tasks');
+        if (saved) {
+          try {
+            setHouseholdTasks(JSON.parse(saved));
+            return;
+          } catch(e){}
+        }
+        setHouseholdTasks(DEFAULT_HOUSEHOLD_TASKS.map(t => ({
+          ...t,
+          completedWeekKey: null,
+          completedBy: null,
+          completedColor: null
+        })));
+      };
+
+      // Carrega tarefas privadas isoladas daquele perfil específico
+      const loadLocalPersonalTasks = (profileId) => {
+        const storageKey = `toca_private_tasks_${profileId}`;
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+          try {
+            setPersonalTasks(JSON.parse(saved));
+            return;
+          } catch(e){}
+        }
+        // Exemplos iniciais personalizados para o perfil
+        const initialTasks = profileId === 'p1' 
+          ? [
+              { id: 'pers-1', ownerId: 'p1', title: 'Comprar petiscos para o Remi', completed: false, createdAt: new Date().toISOString() },
+              { id: 'pers-2', ownerId: 'p1', title: 'Agendar consulta médica', completed: true, createdAt: new Date().toISOString() }
+            ]
+          : [
+              { id: 'pers-3', ownerId: 'p2', title: 'Lembrar de comprar serragem nova', completed: false, createdAt: new Date().toISOString() }
+            ];
+        setPersonalTasks(initialTasks);
+      };
+
+      const saveHouseholdTasksState = (newTasks) => {
+        setHouseholdTasks(newTasks);
+        localStorage.setItem('toca_household_tasks', JSON.stringify(newTasks));
+      };
+
+      // Salva tarefas privadas exclusivamente na chave daquele perfil
+      const savePersonalTasksState = (newTasks, profileId = currentProfile.id) => {
+        setPersonalTasks(newTasks);
+        localStorage.setItem(`toca_private_tasks_${profileId}`, JSON.stringify(newTasks));
+      };
+
+      // Progresso Semanal com Reset Automático Inteligente
+      const { progressPercentage, completedCount, totalCount } = useMemo(() => {
+        if (!householdTasks || householdTasks.length === 0) {
+          return { progressPercentage: 0, completedCount: 0, totalCount: 0 };
+        }
+        const done = householdTasks.filter(t => t.completedWeekKey === currentWeekKey).length;
+        const total = householdTasks.length;
+        const pct = Math.round((done / total) * 100);
+        return { progressPercentage: pct, completedCount: done, totalCount: total };
+      }, [householdTasks, currentWeekKey]);
+
+      // Dispara confetes comemorativos quando o Remi atinge 100%
+      const lastCelebratedRef = useRef(null);
+      useEffect(() => {
+        if (progressPercentage === 100 && totalCount > 0 && lastCelebratedRef.current !== currentWeekKey) {
+          lastCelebratedRef.current = currentWeekKey;
+          if (window.confetti) {
+            window.confetti({
+              particleCount: 130,
+              spread: 90,
+              origin: { y: 0.6 }
+            });
+            setTimeout(() => {
+              window.confetti({
+                particleCount: 90,
+                angle: 60,
+                spread: 60,
+                origin: { x: 0 }
+              });
+              window.confetti({
+                particleCount: 90,
+                angle: 120,
+                spread: 60,
+                origin: { x: 1 }
+              });
+            }, 300);
+          }
+        }
+      }, [progressPercentage, totalCount, currentWeekKey]);
+
+      // Outro morador da casa (para exibir o nome no filtro dinâmico)
+      const otherProfile = useMemo(() => {
+        return profiles.find(p => p.id !== currentProfile.id) || null;
+      }, [profiles, currentProfile.id]);
+
+      // Contagens individuais para os filtros
+      const mineCompletedCount = useMemo(() => {
+        return householdTasks.filter(t => t.completedWeekKey === currentWeekKey && t.completedBy === currentProfile.name).length;
+      }, [householdTasks, currentWeekKey, currentProfile.name]);
+
+      const otherCompletedCount = useMemo(() => {
+        return householdTasks.filter(t => t.completedWeekKey === currentWeekKey && t.completedBy && t.completedBy !== currentProfile.name).length;
+      }, [householdTasks, currentWeekKey, currentProfile.name]);
+
+      // Tarefas filtradas de acordo com o filtro selecionado ('all' | 'mine' | 'other')
+      const filteredHouseholdTasks = useMemo(() => {
+        return householdTasks.filter(task => {
+          const isDoneThisWeek = task.completedWeekKey === currentWeekKey;
+          if (householdFilter === 'mine') {
+            return isDoneThisWeek && task.completedBy === currentProfile.name;
+          }
+          if (householdFilter === 'other') {
+            return isDoneThisWeek && task.completedBy && task.completedBy !== currentProfile.name;
+          }
+          return true; // 'all'
+        });
+      }, [householdTasks, householdFilter, currentWeekKey, currentProfile.name]);
+
+      // Ações: Concluir tarefa da casa
+      const toggleHouseholdTask = async (task) => {
+        const isCurrentlyDone = task.completedWeekKey === currentWeekKey;
+        const willBeDone = !isCurrentlyDone;
+
+        const updatedData = {
+          completedWeekKey: willBeDone ? currentWeekKey : null,
+          completedBy: willBeDone ? currentProfile.name : null,
+          completedColor: willBeDone ? (PALETTES[currentProfile.palette]?.primary || '#8b5cf6') : null,
+          completedAt: willBeDone ? new Date().toISOString() : null
+        };
+
+        if (isFirebaseReady && db) {
+          try {
+            await db.collection('household_tasks').doc(task.id).update(updatedData);
+          } catch(err) {
+            console.error("Erro ao atualizar no Firestore:", err);
+          }
+        } else {
+          const updated = householdTasks.map(t => {
+            if (t.id === task.id) {
+              return { ...t, ...updatedData };
+            }
+            return t;
+          });
+          saveHouseholdTasksState(updated);
+        }
+      };
+
+      const handleAddHouseholdTask = async (e) => {
+        e.preventDefault();
+        if (!newTaskTitle.trim()) return;
+
+        const newTask = {
+          id: 'task-' + Date.now(),
+          title: newTaskTitle.trim(),
+          category: newTaskCategory || 'Geral',
+          icon: newTaskIcon || '✨',
+          completedWeekKey: null,
+          completedBy: null,
+          completedColor: null,
+          createdAt: new Date().toISOString()
+        };
+
+        if (isFirebaseReady && db) {
+          try {
+            await db.collection('household_tasks').doc(newTask.id).set(newTask);
+          } catch(err) {
+            console.error(err);
+          }
+        } else {
+          saveHouseholdTasksState([...householdTasks, newTask]);
+        }
+
+        setNewTaskTitle('');
+        setShowNewTaskModal(false);
+      };
+
+      const handleDeleteHouseholdTask = async (id, e) => {
+        e.stopPropagation();
+        if (!confirm("Deseja remover esta micro-tarefa da lista permanente da casa?")) return;
+
+        if (isFirebaseReady && db) {
+          try {
+            await db.collection('household_tasks').doc(id).delete();
+          } catch(err) {
+            console.error(err);
+          }
+        } else {
+          saveHouseholdTasksState(householdTasks.filter(t => t.id !== id));
+        }
+      };
+
+      // Ações: Tarefas Pessoais (Espaço Privado e Isolado)
+      const myPersonalTasks = useMemo(() => {
+        return personalTasks.filter(t => !t.ownerId || t.ownerId === currentProfile.id);
+      }, [personalTasks, currentProfile.id]);
+
+      const togglePersonalTask = async (taskId) => {
+        const updated = personalTasks.map(t => {
+          if (t.id === taskId) {
+            return { ...t, completed: !t.completed };
+          }
+          return t;
+        });
+
+        if (isFirebaseReady && db) {
+          const target = updated.find(t => t.id === taskId);
+          try {
+            await db
+              .collection('user_private_spaces')
+              .doc(currentProfile.id)
+              .collection('tasks')
+              .doc(taskId)
+              .update({ completed: target.completed });
+          } catch(e) {
+            console.error("Erro ao atualizar tarefa privada no Firestore:", e);
+          }
+        } else {
+          savePersonalTasksState(updated);
+        }
+      };
+
+      const handleAddPersonalTask = async (title) => {
+        if (!title.trim()) return;
+        const newTask = {
+          id: 'pers-' + Date.now(),
+          ownerId: currentProfile.id,
+          title: title.trim(),
+          completed: false,
+          createdAt: new Date().toISOString()
+        };
+
+        if (isFirebaseReady && db) {
+          try {
+            await db
+              .collection('user_private_spaces')
+              .doc(currentProfile.id)
+              .collection('tasks')
+              .doc(newTask.id)
+              .set(newTask);
+          } catch(e) {
+            console.error("Erro ao adicionar tarefa privada no Firestore:", e);
+          }
+        } else {
+          savePersonalTasksState([newTask, ...personalTasks]);
+        }
+      };
+
+      const handleDeletePersonalTask = async (id) => {
+        if (isFirebaseReady && db) {
+          try {
+            await db
+              .collection('user_private_spaces')
+              .doc(currentProfile.id)
+              .collection('tasks')
+              .doc(id)
+              .delete();
+          } catch(e) {
+            console.error("Erro ao excluir tarefa privada no Firestore:", e);
+          }
+        } else {
+          savePersonalTasksState(personalTasks.filter(t => t.id !== id));
+        }
+      };
+
+      // Configuração de Perfis
+      const handleUpdateProfilePalette = (paletteKey) => {
+        const updated = profiles.map(p => {
+          if (p.id === currentProfile.id) {
+            return { ...p, palette: paletteKey };
+          }
+          return p;
+        });
+        setProfiles(updated);
+      };
+
+      const handleUpdateProfileName = (newName) => {
+        if (!newName.trim()) return;
+        const updated = profiles.map(p => {
+          if (p.id === currentProfile.id) {
+            return { ...p, name: newName.trim() };
+          }
+          return p;
+        });
+        setProfiles(updated);
+      };
+
+      // =======================================================================
+      // RENDERIZAÇÃO
+      // =======================================================================
+      return (
+        <div className="min-h-screen flex flex-col justify-between max-w-lg mx-auto bg-slate-50 border-x border-slate-200/60 shadow-xl relative pb-28 theme-transition">
+          
+          {/* TOPO: BARRA SUPERIOR & SELETOR DE PERFIL */}
+          <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-theme-100 px-4 py-3 theme-transition shadow-xs">
+            <div className="flex items-center justify-between">
+              {/* Logo com o Remi */}
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-theme-100 border border-theme-300 flex items-center justify-center text-xl shadow-xs transition-transform hover:scale-105">
+                  🐭
+                </div>
+                <div>
+                  <h1 className="font-extrabold text-slate-900 text-lg tracking-tight leading-none flex items-center gap-1.5">
+                    Toca do Remi
+                    {!isOnlineFirebase && (
+                      <span className="text-[10px] bg-slate-100 text-slate-500 font-bold px-1.5 py-0.5 rounded-full border border-slate-200">
+                        Local
+                      </span>
+                    )}
+                  </h1>
+                  <span className="text-[11px] text-theme-600 font-bold tracking-wide">
+                    Gestão da Casa & Micro-Tarefas
+                  </span>
+                </div>
+              </div>
+
+              {/* Seletor Rápido de Morador com Identidade Visual */}
+              <div className="flex items-center gap-1.5">
+                <div className="flex items-center bg-slate-100/90 p-1 rounded-2xl border border-slate-200">
+                  {profiles.map(p => {
+                    const isActive = p.id === currentProfile.id;
+                    const paletteInfo = PALETTES[p.palette] || PALETTES.purple;
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => setActiveProfileId(p.id)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          isActive 
+                            ? 'bg-white text-slate-900 shadow-sm border border-theme-300 ring-2 ring-theme-400/20 scale-100' 
+                            : 'text-slate-600 hover:text-slate-900 opacity-80'
+                        }`}
+                      >
+                        <span className={`w-2.5 h-2.5 rounded-full ${paletteInfo.dotClass}`}></span>
+                        <span>{p.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={() => setShowProfileModal(true)}
+                  title="Configurar meu perfil e cor tema"
+                  className="w-9 h-9 rounded-2xl bg-white border border-theme-200 flex items-center justify-center text-theme-700 hover:bg-theme-50 hover:border-theme-400 transition shadow-xs active:scale-95"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </header>
+
+          {/* CONTEÚDO PRINCIPAL */}
+          <main className="p-4 space-y-4 flex-1">
+            
+            {/* ABA 1: MICRO-TAREFAS DA CASA (COMPARTILHADA) */}
+            {activeTab === 'household' && (
+              <>
+                {/* 1. O Mascote Remi e a Barra de Progresso Semanal */}
+                <RemiMascot progress={progressPercentage} />
+
+                {/* 2. Cabeçalho das Tarefas & Botão Nova Tarefa */}
+                <div className="flex items-center justify-between pt-1">
+                  <div>
+                    <h2 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                      <span>Tarefas da Semana</span>
+                      <span className="text-xs bg-theme-100 text-theme-800 font-extrabold px-2.5 py-0.5 rounded-full border border-theme-300">
+                        {completedCount}/{totalCount}
+                      </span>
+                    </h2>
+                    <p className="text-[11px] text-slate-500 font-medium">
+                      Reset automático todo domingo à meia-noite
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => setShowNewTaskModal(true)}
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-theme-600 hover:bg-theme-700 text-white rounded-2xl text-xs font-bold shadow-md shadow-theme-500/25 active:scale-95 transition"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    <span>Nova Tarefa</span>
+                  </button>
+                </div>
+
+                {/* 3. Filtros Rápidos por Morador (Todas / Minhas / Do outro) */}
+                <div className="bg-slate-200/60 p-1 rounded-2xl flex items-center gap-1 text-xs font-bold border border-slate-200/80 shadow-inner">
+                  {/* Filtro: Todas */}
+                  <button
+                    onClick={() => setHouseholdFilter('all')}
+                    className={`flex-1 py-1.5 px-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                      householdFilter === 'all'
+                        ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 scale-100 font-extrabold'
+                        : 'text-slate-600 hover:text-slate-900 opacity-80'
+                    }`}
+                  >
+                    <span>Todas</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                      householdFilter === 'all' ? 'bg-theme-100 text-theme-700' : 'bg-slate-200 text-slate-600'
+                    }`}>
+                      {totalCount}
+                    </span>
+                  </button>
+
+                  {/* Filtro: Minhas tarefas */}
+                  <button
+                    onClick={() => setHouseholdFilter('mine')}
+                    className={`flex-1 py-1.5 px-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                      householdFilter === 'mine'
+                        ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 scale-100 font-extrabold'
+                        : 'text-slate-600 hover:text-slate-900 opacity-80'
+                    }`}
+                  >
+                    <span>Minhas</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                      householdFilter === 'mine' ? 'bg-theme-500 text-white shadow-xs' : 'bg-slate-200 text-slate-600'
+                    }`}>
+                      {mineCompletedCount}
+                    </span>
+                  </button>
+
+                  {/* Filtro: Tarefas do outro */}
+                  <button
+                    onClick={() => setHouseholdFilter('other')}
+                    className={`flex-1 py-1.5 px-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                      householdFilter === 'other'
+                        ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 scale-100 font-extrabold'
+                        : 'text-slate-600 hover:text-slate-900 opacity-80'
+                    }`}
+                  >
+                    <span className="truncate">
+                      {otherProfile ? `De ${otherProfile.name}` : 'Do outro'}
+                    </span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                      householdFilter === 'other' ? 'bg-theme-100 text-theme-800' : 'bg-slate-200 text-slate-600'
+                    }`}>
+                      {otherCompletedCount}
+                    </span>
+                  </button>
+                </div>
+
+                {/* 4. Lista de Tarefas da Casa */}
+                <div className="space-y-2.5">
+                  {householdTasks.length === 0 ? (
+                    <div className="text-center py-12 bg-white rounded-3xl border border-theme-200 p-6">
+                      <div className="text-4xl mb-2">✨</div>
+                      <p className="text-sm font-bold text-slate-700">Nenhuma tarefa na toca!</p>
+                      <p className="text-xs text-slate-500 mt-1">Clique em "Nova Tarefa" para adicionar as micro-tarefas da semana.</p>
+                    </div>
+                  ) : filteredHouseholdTasks.length === 0 ? (
+                    <div className="text-center py-10 bg-white rounded-3xl border border-dashed border-theme-200 p-6 space-y-1">
+                      <div className="text-3xl mb-1">🐭</div>
+                      {householdFilter === 'mine' && (
+                        <>
+                          <p className="text-sm font-bold text-slate-800">Você ainda não concluiu tarefas esta semana</p>
+                          <p className="text-xs text-slate-500">Dê um tick em qualquer tarefa da lista para marcar seus pontos com o Remi!</p>
+                        </>
+                      )}
+                      {householdFilter === 'other' && (
+                        <>
+                          <p className="text-sm font-bold text-slate-800">
+                            {otherProfile ? `${otherProfile.name} ainda não concluiu tarefas esta semana` : 'Nenhuma tarefa concluída pelo outro morador ainda'}
+                          </p>
+                          <p className="text-xs text-slate-500">As tarefas feitas aparecerão aqui conforme forem concluídas.</p>
+                        </>
+                      )}
+                      <button
+                        onClick={() => setHouseholdFilter('all')}
+                        className="mt-2 text-xs font-bold text-theme-600 hover:underline inline-block pt-1"
+                      >
+                        ← Ver todas as tarefas da casa
+                      </button>
+                    </div>
+                  ) : (
+                    filteredHouseholdTasks.map(task => {
+                      const isDone = task.completedWeekKey === currentWeekKey;
+
+                      return (
+                        <div
+                          key={task.id}
+                          onClick={() => toggleHouseholdTask(task)}
+                          className={`group cursor-pointer rounded-2xl p-3.5 border transition-all duration-200 flex items-center justify-between gap-3 ${
+                            isDone 
+                              ? 'bg-white border-slate-200 opacity-90 shadow-none' 
+                              : 'bg-white border-slate-200/90 hover:border-theme-300 shadow-sm hover:shadow'
+                          }`}
+                          style={{
+                            borderLeftWidth: isDone ? '5px' : '1px',
+                            borderLeftColor: isDone ? (task.completedColor || 'var(--color-theme-500)') : undefined
+                          }}
+                        >
+                          <div className="flex items-center gap-3.5 min-w-0">
+                            {/* Checkbox com animação e cor do usuário */}
+                            <div 
+                              className={`w-7 h-7 rounded-xl flex items-center justify-center transition-all flex-shrink-0 ${
+                                isDone 
+                                  ? 'text-white shadow-sm scale-100' 
+                                  : 'border-2 border-slate-300 bg-slate-50 group-hover:border-theme-400'
+                              }`}
+                              style={{
+                                backgroundColor: isDone ? (task.completedColor || 'var(--color-theme-500)') : undefined,
+                                borderColor: isDone ? (task.completedColor || 'var(--color-theme-500)') : undefined
+                              }}
+                            >
+                              {isDone ? (
+                                <svg className="w-4 h-4 stroke-current stroke-[3]" fill="none" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                              ) : (
+                                <span className="text-xs opacity-70">{task.icon || '🧹'}</span>
+                              )}
+                            </div>
+
+                            {/* Informações da Tarefa */}
+                            <div className="min-w-0">
+                              <h4 className={`text-sm font-bold tracking-tight truncate ${
+                                isDone ? 'line-through text-slate-400' : 'text-slate-800'
+                              }`}>
+                                {task.title}
+                              </h4>
+                              
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                                  {task.category || 'Geral'}
+                                </span>
+
+                                {isDone && (
+                                  <span 
+                                    className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-md text-white flex items-center gap-1 shadow-xs"
+                                    style={{ backgroundColor: task.completedColor || 'var(--color-theme-500)' }}
+                                  >
+                                    <span>✓ Feito por {task.completedBy}</span>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Botão de excluir micro-tarefa */}
+                          <button
+                            onClick={(e) => handleDeleteHouseholdTask(task.id, e)}
+                            className="opacity-0 group-hover:opacity-100 hover:text-rose-500 text-slate-300 p-1.5 transition rounded-lg hover:bg-rose-50"
+                            title="Remover micro-tarefa"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* ABA 2: SÓ PARA MIM (ESPAÇO ESTRITAMENTE PRIVADO E ISOLADO) */}
+            {activeTab === 'personal' && (
+              <div className="space-y-4">
+                {/* Banner com indicador visual de isolamento e privacidade */}
+                <div className="bg-gradient-to-r from-theme-50 via-white to-theme-50/50 p-4 rounded-3xl border border-theme-200 shadow-sm flex items-center justify-between theme-transition">
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <div className="w-12 h-12 rounded-2xl bg-white border border-theme-300 flex items-center justify-center text-2xl shadow-xs">
+                        {currentProfile.avatar || '🔒'}
+                      </div>
+                      <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-slate-900 text-white text-[10px] flex items-center justify-center font-bold border-2 border-white shadow-xs">
+                        🔒
+                      </span>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <h2 className="text-base font-extrabold text-slate-900 leading-tight">
+                          Privado: {currentProfile.name}
+                        </h2>
+                        <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-1.5 py-0.2 rounded-md border border-emerald-200">
+                          Isolado
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Apenas você tem acesso a estas tarefas e notas.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-extrabold text-theme-700 bg-white px-2.5 py-1 rounded-full border border-theme-200 shadow-xs inline-block">
+                      {myPersonalTasks.filter(t => t.completed).length}/{myPersonalTasks.length}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Input para adicionar nova tarefa pessoal privada */}
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const input = e.target.elements.personalInput;
+                    handleAddPersonalTask(input.value);
+                    input.value = '';
+                  }}
+                  className="flex gap-2"
+                >
+                  <input
+                    name="personalInput"
+                    type="text"
+                    required
+                    placeholder={`Adicionar nota/tarefa privada para ${currentProfile.name}...`}
+                    className="flex-1 bg-white border border-slate-200 rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-theme-400 focus:border-transparent shadow-xs font-medium"
+                  />
+                  <button
+                    type="submit"
+                    className="px-4 py-2.5 bg-theme-600 hover:bg-theme-700 text-white font-bold text-sm rounded-2xl shadow-md shadow-theme-500/25 active:scale-95 transition flex items-center gap-1"
+                  >
+                    <span>+</span>
+                    <span>Salvar</span>
+                  </button>
+                </form>
+
+                {/* Lista Pessoal Privada */}
+                <div className="space-y-2">
+                  {myPersonalTasks.length === 0 ? (
+                    <div className="text-center py-10 bg-white rounded-3xl border border-dashed border-theme-200 p-6 space-y-2">
+                      <div className="text-3xl">🔒</div>
+                      <p className="text-sm font-bold text-slate-700">Seu espaço pessoal está vazio</p>
+                      <p className="text-xs text-slate-400 max-w-xs mx-auto">
+                        Suas tarefas aqui ficam guardadas sob sua chave individual. Ninguém da casa consegue visualizá-las.
+                      </p>
+                    </div>
+                  ) : (
+                    myPersonalTasks.map(task => (
+                      <div
+                        key={task.id}
+                        className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                          task.completed 
+                            ? 'bg-slate-50/90 border-slate-200 opacity-60 shadow-none' 
+                            : 'bg-white border-slate-200/90 shadow-xs hover:border-theme-300'
+                        }`}
+                      >
+                        <label className="flex items-center gap-3 cursor-pointer flex-1 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={task.completed}
+                            onChange={() => togglePersonalTask(task.id)}
+                            className="w-5 h-5 rounded-lg border-slate-300 cursor-pointer accent-theme-600 flex-shrink-0"
+                          />
+                          <span className={`text-sm truncate ${task.completed ? 'line-through text-slate-400' : 'text-slate-800 font-semibold'}`}>
+                            {task.title}
+                          </span>
+                        </label>
+                        <button
+                          onClick={() => handleDeletePersonalTask(task.id)}
+                          className="text-slate-300 hover:text-rose-500 p-1.5 transition rounded-lg hover:bg-rose-50 flex-shrink-0"
+                          title="Excluir tarefa pessoal"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                          </svg>
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </main>
+
+          {/* BARRA INFERIOR DE NAVEGAÇÃO PWA */}
+          <nav className="fixed bottom-0 left-0 right-0 z-30 max-w-lg mx-auto bg-white/95 backdrop-blur-md border-t border-theme-100 px-6 py-2.5 flex items-center justify-around shadow-lg theme-transition">
+            <button
+              onClick={() => setActiveTab('household')}
+              className={`flex flex-col items-center gap-1 transition-all ${
+                activeTab === 'household' 
+                  ? 'text-theme-600 font-extrabold scale-105' 
+                  : 'text-slate-400 hover:text-slate-600 font-medium'
+              }`}
+            >
+              <div className={`p-1.5 rounded-xl transition ${activeTab === 'household' ? 'bg-theme-100 text-theme-600' : ''}`}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                </svg>
+              </div>
+              <span className="text-[11px] tracking-tight">Toca do Remi</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('personal')}
+              className={`flex flex-col items-center gap-1 transition-all ${
+                activeTab === 'personal' 
+                  ? 'text-theme-600 font-extrabold scale-105' 
+                  : 'text-slate-400 hover:text-slate-600 font-medium'
+              }`}
+            >
+              <div className={`p-1.5 rounded-xl transition ${activeTab === 'personal' ? 'bg-theme-100 text-theme-600' : ''}`}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                </svg>
+              </div>
+              <span className="text-[11px] tracking-tight">Só para {currentProfile.name} 🔒</span>
+            </button>
+          </nav>
+
+          {/* ================================================================= */}
+          {/* MODAL: PERSONALIZAÇÃO DE PERFIL E CORES                           */}
+          {/* ================================================================= */}
+          {showProfileModal && (
+            <div className="fixed inset-0 z-50 bg-black/45 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl border border-slate-100 space-y-5 animate-in fade-in zoom-in duration-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🎨</span>
+                    <h3 className="font-extrabold text-slate-900 text-lg">Meu Perfil & Cor</h3>
+                  </div>
+                  <button 
+                    onClick={() => setShowProfileModal(false)}
+                    className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 font-bold"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Edição do Nome */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Seu Nome</label>
+                  <input
+                    type="text"
+                    value={currentProfile.name}
+                    onChange={(e) => handleUpdateProfileName(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-theme-400"
+                  />
+                </div>
+
+                {/* Escolha da Cor Tema Dinâmica */}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                    Sua Cor Tema (Identidade Visual)
+                  </label>
+                  <div className="grid grid-cols-3 gap-2.5">
+                    {Object.values(PALETTES).map(palette => {
+                      const isSelected = currentProfile.palette === palette.id;
+                      return (
+                        <button
+                          key={palette.id}
+                          onClick={() => handleUpdateProfilePalette(palette.id)}
+                          className={`p-2.5 rounded-2xl border flex flex-col items-center gap-1.5 transition text-xs font-bold ${
+                            isSelected 
+                              ? 'border-slate-800 bg-slate-50 shadow-sm scale-102 ring-2 ring-slate-800/30' 
+                              : 'border-slate-200 hover:border-slate-300'
+                          }`}
+                        >
+                          <span 
+                            className="w-7 h-7 rounded-full shadow-inner flex items-center justify-center text-white text-xs font-bold"
+                            style={{ backgroundColor: palette.primary }}
+                          >
+                            {isSelected && '✓'}
+                          </span>
+                          <span className="text-[11px] text-slate-700 truncate w-full text-center">
+                            {palette.name.split('/')[0]}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[11px] text-slate-500 italic leading-snug">
+                    ✨ Ao escolher sua cor, bordas, botões, barras e suas tarefas concluídas se adaptam imediatamente!
+                  </p>
+                </div>
+
+                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-[11px] text-slate-600">
+                  <span className="font-bold text-slate-700">Conexão:</span>{' '}
+                  {isOnlineFirebase ? (
+                    <span className="text-emerald-600 font-bold">● Sincronização em tempo real ativa</span>
+                  ) : (
+                    <span>● Modo Local ativo (configure o `firebaseConfig` para sincronizar)</span>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => setShowProfileModal(false)}
+                  className="w-full py-3 bg-theme-600 hover:bg-theme-700 text-white font-extrabold text-sm rounded-2xl shadow-lg shadow-theme-500/25 transition"
+                >
+                  Salvar Preferências
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ================================================================= */}
+          {/* MODAL: NOVA MICRO-TAREFA PARA A CASA                             */}
+          {/* ================================================================= */}
+          {showNewTaskModal && (
+            <div className="fixed inset-0 z-50 bg-black/45 backdrop-blur-sm flex items-center justify-center p-4">
+              <form 
+                onSubmit={handleAddHouseholdTask}
+                className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl border border-slate-100 space-y-4 animate-in fade-in zoom-in duration-200"
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="font-extrabold text-slate-900 text-lg">Nova Tarefa da Casa</h3>
+                  <button 
+                    type="button"
+                    onClick={() => setShowNewTaskModal(false)}
+                    className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 font-bold"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-600">Nome da Tarefa</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Limpar a gaiola do Remi"
+                    value={newTaskTitle}
+                    onChange={(e) => setNewTaskTitle(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-theme-400"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-600">Cômodo / Categoria</label>
+                    <select
+                      value={newTaskCategory}
+                      onChange={(e) => setNewTaskCategory(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-theme-400"
+                    >
+                      <option value="Remi 🐭">🐭 Remi</option>
+                      <option value="Cozinha">🍳 Cozinha</option>
+                      <option value="Quarto">🛏️ Quarto</option>
+                      <option value="Sala">🛋️ Sala</option>
+                      <option value="Banheiro">🧼 Banheiro</option>
+                      <option value="Lavanderia">🧺 Lavanderia</option>
+                      <option value="Geral">🧹 Geral</option>
+                      <option value="Pets">🐾 Pets</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-600">Ícone</label>
+                    <div className="flex items-center gap-1.5 overflow-x-auto py-1">
+                      {['🐭', '🧹', '🛏️', '🍳', '🧼', '🧺', '🗑️', '🌱', '✨'].map(emoji => (
+                        <button
+                          type="button"
+                          key={emoji}
+                          onClick={() => setNewTaskIcon(emoji)}
+                          className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm transition ${
+                            newTaskIcon === emoji ? 'bg-theme-100 border-2 border-theme-500 scale-105' : 'bg-slate-50 border border-slate-200'
+                          }`}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-slate-500">
+                  ℹ️ Essa tarefa fará parte do ciclo semanal e resetará todo domingo para um novo ciclo!
+                </p>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowNewTaskModal(false)}
+                    className="flex-1 py-2.5 bg-slate-100 text-slate-700 font-bold text-sm rounded-2xl hover:bg-slate-200 transition"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-2.5 bg-theme-600 text-white font-bold text-sm rounded-2xl shadow-md shadow-theme-500/25 hover:bg-theme-700 transition"
+                  >
+                    Adicionar
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
