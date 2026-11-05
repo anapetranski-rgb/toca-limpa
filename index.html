@@ -335,16 +335,69 @@
       return `${format(sunday)} a ${format(saturday)}`;
     };
 
-    // Tarefas padrão iniciais para inspirar a casa
+    // Tarefas oficiais da casa baseadas no Checklist de Microtarefas Diárias
     const DEFAULT_HOUSEHOLD_TASKS = [
-      { id: 'task-1', title: 'Trocar roupa de cama e toalhas', category: 'Quarto', icon: '🛏️' },
-      { id: 'task-2', title: 'Limpar fogão e bancada da pia', category: 'Cozinha', icon: '🍳' },
-      { id: 'task-3', title: 'Passar pano e aspirar a sala', category: 'Sala', icon: '🧹' },
-      { id: 'task-4', title: 'Higienizar pia e vaso do banheiro', category: 'Banheiro', icon: '🧼' },
-      { id: 'task-5', title: 'Lavar panos de prato e chão', category: 'Lavanderia', icon: '🧺' },
-      { id: 'task-6', title: 'Colocar os sacos de lixo na calçada', category: 'Geral', icon: '🗑️' },
-      { id: 'task-7', title: 'Regar as plantinhas da casa', category: 'Geral', icon: '🌱' },
-      { id: 'task-8', title: 'Trocar serragem/limpar a gaiola do Remi', category: 'Remi 🐭', icon: '✨' }
+      // 1. Banheiros
+      { id: 'banheiro-1', title: 'Recolher e esvaziar os lixinhos dos banheiros', category: 'Banheiro', icon: '🗑️' },
+      { id: 'banheiro-2', title: 'Trocar as toalhas de rosto/banho', category: 'Banheiro', icon: '🧼' },
+      { id: 'banheiro-3', title: 'Tirar bagunça da bancada (copos, maquiagens, produtos fora do lugar)', category: 'Banheiro', icon: '🧴' },
+      { id: 'banheiro-4', title: 'Limpar pia, torneira e espelho', category: 'Banheiro', icon: '✨' },
+      { id: 'banheiro-5', title: 'Higienizar a bacia e o assento do vaso sanitário', category: 'Banheiro', icon: '🚽' },
+      { id: 'banheiro-6', title: 'Esfregar o chão do box e paredes', category: 'Banheiro', icon: '🧽' },
+      { id: 'banheiro-7', title: 'Varrer e passar pano no chão do banheiro', category: 'Banheiro', icon: '🧹' },
+      { id: 'banheiro-8', title: 'Repor papel higiênico e sabonetes', category: 'Banheiro', icon: '🧻' },
+
+      // 2. Cozinha
+      { id: 'cozinha-1', title: 'Recolher copos, pratos e xícaras espalhados pela casa', category: 'Cozinha', icon: '☕' },
+      { id: 'cozinha-2', title: 'Lavar a louça acumulada (ou carregar a máquina)', category: 'Cozinha', icon: '🍽️' },
+      { id: 'cozinha-3', title: 'Secar e guardar a louça', category: 'Cozinha', icon: '🍴' },
+      { id: 'cozinha-4', title: 'Limpar o fogão / cooktop', category: 'Cozinha', icon: '🍳' },
+      { id: 'cozinha-5', title: 'Limpar e secar as bancadas e a pia', category: 'Cozinha', icon: '🧽' },
+      { id: 'cozinha-6', title: 'Limpar a mesa de refeições', category: 'Cozinha', icon: '🪑' },
+      { id: 'cozinha-7', title: 'Passar pano por fora nos eletros (micro-ondas, geladeira, cafeteira)', category: 'Cozinha', icon: '🔌' },
+      { id: 'cozinha-8', title: 'Checar e descartar o que estragou na geladeira', category: 'Cozinha', icon: '🧊' },
+      { id: 'cozinha-9', title: 'Esvaziar o lixo orgânico e reciclável da cozinha', category: 'Cozinha', icon: '🗑️' },
+      { id: 'cozinha-10', title: 'Varrer e passar pano no chão da cozinha', category: 'Cozinha', icon: '🧹' },
+
+      // 3. Quartos
+      { id: 'quarto-1', title: 'Arrumar/esticar a cama ao acordar', category: 'Quartos', icon: '🛏️' },
+      { id: 'quarto-2', title: 'Recolher potes, copos e garrafas do quarto', category: 'Quartos', icon: '🥛' },
+      { id: 'quarto-3', title: 'Guardar roupas espalhadas (separar limpas x sujas no cesto)', category: 'Quartos', icon: '👕' },
+      { id: 'quarto-4', title: 'Organizar calçados fora do lugar', category: 'Quartos', icon: '👟' },
+      { id: 'quarto-5', title: 'Esvaziar o lixo do quarto', category: 'Quartos', icon: '🗑️' },
+      { id: 'quarto-6', title: 'Tirar o pó das mesas de cabeceira e superfícies', category: 'Quartos', icon: '🪶' },
+      { id: 'quarto-7', title: 'Varrer (ou aspirar) o chão do quarto', category: 'Quartos', icon: '🧹' },
+      { id: 'quarto-8', title: 'Passar pano no chão do quarto', category: 'Quartos', icon: '✨' },
+      { id: 'quarto-9', title: 'Trocar o jogo de cama (dias específicos)', category: 'Quartos', icon: '🧺' },
+
+      // 4. Escritório
+      { id: 'escritorio-1', title: 'Tirar copos, xícaras e embalagens da mesa de trabalho', category: 'Escritório', icon: '☕' },
+      { id: 'escritorio-2', title: 'Organizar papéis, canetas e cabos soltos', category: 'Escritório', icon: '📝' },
+      { id: 'escritorio-3', title: 'Guardar periféricos e acessórios que não estão em uso', category: 'Escritório', icon: '🎧' },
+      { id: 'escritorio-4', title: 'Tirar o pó da mesa, monitores e prateleiras', category: 'Escritório', icon: '💻' },
+      { id: 'escritorio-5', title: 'Limpar os apoios de braço e estrutura da cadeira', category: 'Escritório', icon: '💺' },
+      { id: 'escritorio-6', title: 'Esvaziar o lixo do escritório', category: 'Escritório', icon: '🗑️' },
+      { id: 'escritorio-7', title: 'Varrer / aspirar embaixo da mesa e ao redor da cadeira', category: 'Escritório', icon: '🧹' },
+      { id: 'escritorio-8', title: 'Passar pano no chão do escritório', category: 'Escritório', icon: '✨' },
+
+      // 5. Sala
+      { id: 'sala-1', title: 'Recolher objetos que pertencem a outros cômodos e devolver ao lugar', category: 'Sala', icon: '📦' },
+      { id: 'sala-2', title: 'Arrumar as almofadas e dobrar as mantas do sofá', category: 'Sala', icon: '🛋️' },
+      { id: 'sala-3', title: 'Tirar o pó do rack, painel da TV e mesas', category: 'Sala', icon: '📺' },
+      { id: 'sala-4', title: 'Varrer ou aspirar o chão e tapete da sala', category: 'Sala', icon: '🧹' },
+      { id: 'sala-5', title: 'Passar pano no chão da sala', category: 'Sala', icon: '✨' },
+
+      // 6. Lavanderia & Lixo da Rua
+      { id: 'lavanderia-1', title: 'Separar roupas sujas por cor/tipo e colocar para lavar', category: 'Lavanderia', icon: '🧺' },
+      { id: 'lavanderia-2', title: 'Estender roupas limpas no varal', category: 'Lavanderia', icon: '👚' },
+      { id: 'lavanderia-3', title: 'Recolher, dobrar e guardar as roupas secas', category: 'Lavanderia', icon: '👕' },
+      { id: 'lavanderia-4', title: 'Limpar a máquina por fora e a cuba do tanque', category: 'Lavanderia', icon: '🧼' },
+      { id: 'lavanderia-5', title: 'Guardar produtos de limpeza espalhados', category: 'Lavanderia', icon: '🧴' },
+      { id: 'lavanderia-6', title: 'Varrer e passar pano no chão da lavanderia', category: 'Lavanderia', icon: '🧹' },
+      { id: 'lavanderia-7', title: 'Juntar todos os sacos de lixo da casa e levar para a lixeira da rua', category: 'Lavanderia', icon: '🚛' },
+
+      // 7. Toca do Remi
+      { id: 'remi-1', title: 'Trocar serragem e higienizar a gaiola/toca do Remi', category: 'Remi 🐭', icon: '🐭' }
     ];
 
     // =========================================================================
@@ -758,9 +811,25 @@
         if (isFirebaseReady && db) {
           const unsubscribeHousehold = db.collection('household_tasks')
             .onSnapshot((snapshot) => {
-              if (snapshot.empty) {
+              // Verifica se está vazio ou se contém apenas as tarefas de teste antigas
+              const hasLegacyTestTasks = !snapshot.empty && snapshot.docs.some(d => d.id === 'task-1');
+              
+              if (snapshot.empty || hasLegacyTestTasks) {
+                // Popula o Firestore com todas as tarefas oficiais do PDF
+                const batch = db.batch();
+                
+                // Se existiam tarefas antigas de teste, limpa-as
+                if (hasLegacyTestTasks) {
+                  snapshot.docs.forEach(d => {
+                    if (d.id.startsWith('task-')) {
+                      batch.delete(d.ref);
+                    }
+                  });
+                }
+
                 DEFAULT_HOUSEHOLD_TASKS.forEach(item => {
-                  db.collection('household_tasks').doc(item.id).set({
+                  const docRef = db.collection('household_tasks').doc(item.id);
+                  batch.set(docRef, {
                     ...item,
                     completedWeekKey: null,
                     completedBy: null,
@@ -768,6 +837,12 @@
                     completedAt: null,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                   });
+                });
+
+                batch.commit().then(() => {
+                  console.log("Checklist oficial do PDF sincronizado com sucesso no Firestore!");
+                }).catch(err => {
+                  console.error("Erro ao popular checklist oficial no Firestore:", err);
                 });
               } else {
                 const list = [];
@@ -820,16 +895,22 @@
         const saved = localStorage.getItem('toca_household_tasks');
         if (saved) {
           try {
-            setHouseholdTasks(JSON.parse(saved));
-            return;
+            const parsed = JSON.parse(saved);
+            // Se já for o checklist completo (mais de 20 tarefas), mantém
+            if (Array.isArray(parsed) && parsed.length >= 20) {
+              setHouseholdTasks(parsed);
+              return;
+            }
           } catch(e){}
         }
-        setHouseholdTasks(DEFAULT_HOUSEHOLD_TASKS.map(t => ({
+        const fresh = DEFAULT_HOUSEHOLD_TASKS.map(t => ({
           ...t,
           completedWeekKey: null,
           completedBy: null,
           completedColor: null
-        })));
+        }));
+        setHouseholdTasks(fresh);
+        localStorage.setItem('toca_household_tasks', JSON.stringify(fresh));
       };
 
       // Carrega tarefas privadas isoladas daquele perfil específico
@@ -1003,6 +1084,42 @@
           }
         } else {
           saveHouseholdTasksState(householdTasks.filter(t => t.id !== id));
+        }
+      };
+
+      // Restaurar o Checklist Oficial do PDF (todas as micro-tarefas diárias)
+      const handleRestoreOfficialChecklist = async () => {
+        if (!confirm("Deseja sincronizar todas as micro-tarefas oficiais do PDF (Checklist da Casa)? A lista padrão da semana será restabelecida.")) return;
+
+        if (isFirebaseReady && db) {
+          try {
+            const batch = db.batch();
+            DEFAULT_HOUSEHOLD_TASKS.forEach(item => {
+              const docRef = db.collection('household_tasks').doc(item.id);
+              batch.set(docRef, {
+                ...item,
+                completedWeekKey: null,
+                completedBy: null,
+                completedColor: null,
+                completedAt: null,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+              });
+            });
+            await batch.commit();
+            alert("Checklist oficial de microtarefas do PDF sincronizado com sucesso!");
+          } catch(err) {
+            console.error("Erro ao sincronizar checklist oficial:", err);
+            alert("Erro ao sincronizar com o Firebase: " + err.message);
+          }
+        } else {
+          const fresh = DEFAULT_HOUSEHOLD_TASKS.map(t => ({
+            ...t,
+            completedWeekKey: null,
+            completedBy: null,
+            completedColor: null
+          }));
+          saveHouseholdTasksState(fresh);
+          alert("Checklist oficial de microtarefas do PDF sincronizado localmente!");
         }
       };
 
@@ -1591,6 +1708,16 @@
                   )}
                 </div>
 
+                {/* Botão de Restaurar Checklist Oficial do PDF */}
+                <button
+                  type="button"
+                  onClick={handleRestoreOfficialChecklist}
+                  className="w-full py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-2xl border border-slate-300 transition flex items-center justify-center gap-1.5"
+                >
+                  <span>📋</span>
+                  <span>Sincronizar Checklist Oficial (PDF)</span>
+                </button>
+
                 <button
                   onClick={() => setShowProfileModal(false)}
                   className="w-full py-3 bg-theme-600 hover:bg-theme-700 text-white font-extrabold text-sm rounded-2xl shadow-lg shadow-theme-500/25 transition"
@@ -1639,16 +1766,16 @@
                     <select
                       value={newTaskCategory}
                       onChange={(e) => setNewTaskCategory(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-theme-400"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-theme-400 font-semibold"
                     >
-                      <option value="Remi 🐭">🐭 Remi</option>
-                      <option value="Cozinha">🍳 Cozinha</option>
-                      <option value="Quarto">🛏️ Quarto</option>
-                      <option value="Sala">🛋️ Sala</option>
                       <option value="Banheiro">🧼 Banheiro</option>
+                      <option value="Cozinha">🍳 Cozinha</option>
+                      <option value="Quartos">🛏️ Quartos</option>
+                      <option value="Escritório">💻 Escritório</option>
+                      <option value="Sala">🛋️ Sala</option>
                       <option value="Lavanderia">🧺 Lavanderia</option>
+                      <option value="Remi 🐭">🐭 Remi</option>
                       <option value="Geral">🧹 Geral</option>
-                      <option value="Pets">🐾 Pets</option>
                     </select>
                   </div>
 
