@@ -776,8 +776,20 @@
       const [newTaskCategory, setNewTaskCategory] = useState('Geral');
       const [newTaskIcon, setNewTaskIcon] = useState('🧹');
 
-      // Filtro da lista compartilhada: 'all' | 'mine' | 'other'
-      const [householdFilter, setHouseholdFilter] = useState('all');
+      // Lista de Cômodos da Casa para filtro
+      const ROOM_CATEGORIES = [
+        { id: 'all', label: 'Todos', icon: '🏠' },
+        { id: 'Banheiro', label: 'Banheiro', icon: '🧼' },
+        { id: 'Cozinha', label: 'Cozinha', icon: '🍳' },
+        { id: 'Quartos', label: 'Quartos', icon: '🛏️' },
+        { id: 'Escritório', label: 'Escritório', icon: '💻' },
+        { id: 'Sala', label: 'Sala', icon: '🛋️' },
+        { id: 'Lavanderia', label: 'Lavanderia', icon: '🧺' },
+        { id: 'Remi 🐭', label: 'Remi', icon: '🐭' }
+      ];
+
+      // Filtro ativo por cômodo: 'all' | 'Banheiro' | 'Cozinha' | etc.
+      const [roomFilter, setRoomFilter] = useState('all');
 
       // Perfil ativo
       const currentProfile = useMemo(() => {
@@ -986,33 +998,39 @@
         }
       }, [progressPercentage, totalCount, currentWeekKey]);
 
-      // Outro morador da casa (para exibir o nome no filtro dinâmico)
-      const otherProfile = useMemo(() => {
-        return profiles.find(p => p.id !== currentProfile.id) || null;
-      }, [profiles, currentProfile.id]);
-
-      // Contagens individuais para os filtros
-      const mineCompletedCount = useMemo(() => {
-        return householdTasks.filter(t => t.completedWeekKey === currentWeekKey && t.completedBy === currentProfile.name).length;
-      }, [householdTasks, currentWeekKey, currentProfile.name]);
-
-      const otherCompletedCount = useMemo(() => {
-        return householdTasks.filter(t => t.completedWeekKey === currentWeekKey && t.completedBy && t.completedBy !== currentProfile.name).length;
-      }, [householdTasks, currentWeekKey, currentProfile.name]);
-
-      // Tarefas filtradas de acordo com o filtro selecionado ('all' | 'mine' | 'other')
+      // Tarefas filtradas de acordo com o Cômodo selecionado
       const filteredHouseholdTasks = useMemo(() => {
+        if (roomFilter === 'all') return householdTasks;
         return householdTasks.filter(task => {
-          const isDoneThisWeek = task.completedWeekKey === currentWeekKey;
-          if (householdFilter === 'mine') {
-            return isDoneThisWeek && task.completedBy === currentProfile.name;
-          }
-          if (householdFilter === 'other') {
-            return isDoneThisWeek && task.completedBy && task.completedBy !== currentProfile.name;
-          }
-          return true; // 'all'
+          const cat = (task.category || '').toLowerCase();
+          const target = roomFilter.toLowerCase();
+          if (target === 'quartos' && cat.includes('quarto')) return true;
+          if (target === 'banheiro' && cat.includes('banheiro')) return true;
+          if (target === 'lavanderia' && (cat.includes('lavanderia') || cat.includes('rua'))) return true;
+          if (target.includes('remi') && cat.includes('remi')) return true;
+          return cat.includes(target);
         });
-      }, [householdTasks, householdFilter, currentWeekKey, currentProfile.name]);
+      }, [householdTasks, roomFilter]);
+
+      // Helper para calcular tarefas concluídas e total por cômodo
+      const getRoomStats = (roomId) => {
+        if (!householdTasks || householdTasks.length === 0) return { done: 0, total: 0 };
+        if (roomId === 'all') {
+          const done = householdTasks.filter(t => t.completedWeekKey === currentWeekKey).length;
+          return { done, total: householdTasks.length };
+        }
+        const tasksInRoom = householdTasks.filter(task => {
+          const cat = (task.category || '').toLowerCase();
+          const target = roomId.toLowerCase();
+          if (target === 'quartos' && cat.includes('quarto')) return true;
+          if (target === 'banheiro' && cat.includes('banheiro')) return true;
+          if (target === 'lavanderia' && (cat.includes('lavanderia') || cat.includes('rua'))) return true;
+          if (target.includes('remi') && cat.includes('remi')) return true;
+          return cat.includes(target);
+        });
+        const done = tasksInRoom.filter(t => t.completedWeekKey === currentWeekKey).length;
+        return { done, total: tasksInRoom.length };
+      };
 
       // Ações: Concluir tarefa da casa
       const toggleHouseholdTask = async (task) => {
@@ -1318,60 +1336,37 @@
                   </button>
                 </div>
 
-                {/* 3. Filtros Rápidos por Morador (Todas / Minhas / Do outro) */}
-                <div className="bg-slate-200/60 p-1 rounded-2xl flex items-center gap-1 text-xs font-bold border border-slate-200/80 shadow-inner">
-                  {/* Filtro: Todas */}
-                  <button
-                    onClick={() => setHouseholdFilter('all')}
-                    className={`flex-1 py-1.5 px-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-                      householdFilter === 'all'
-                        ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 scale-100 font-extrabold'
-                        : 'text-slate-600 hover:text-slate-900 opacity-80'
-                    }`}
-                  >
-                    <span>Todas</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
-                      householdFilter === 'all' ? 'bg-theme-100 text-theme-700' : 'bg-slate-200 text-slate-600'
-                    }`}>
-                      {totalCount}
-                    </span>
-                  </button>
+                {/* 3. Filtros por Cômodo da Casa (Carrossel Horizontal de Pills) */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-1.5 pt-0.5 -mx-4 px-4 scrollbar-none">
+                  {ROOM_CATEGORIES.map(room => {
+                    const isSelected = roomFilter === room.id;
+                    const stats = getRoomStats(room.id);
+                    const isRoomDone = stats.total > 0 && stats.done === stats.total;
 
-                  {/* Filtro: Minhas tarefas */}
-                  <button
-                    onClick={() => setHouseholdFilter('mine')}
-                    className={`flex-1 py-1.5 px-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-                      householdFilter === 'mine'
-                        ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 scale-100 font-extrabold'
-                        : 'text-slate-600 hover:text-slate-900 opacity-80'
-                    }`}
-                  >
-                    <span>Minhas</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
-                      householdFilter === 'mine' ? 'bg-theme-500 text-white shadow-xs' : 'bg-slate-200 text-slate-600'
-                    }`}>
-                      {mineCompletedCount}
-                    </span>
-                  </button>
-
-                  {/* Filtro: Tarefas do outro */}
-                  <button
-                    onClick={() => setHouseholdFilter('other')}
-                    className={`flex-1 py-1.5 px-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-                      householdFilter === 'other'
-                        ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 scale-100 font-extrabold'
-                        : 'text-slate-600 hover:text-slate-900 opacity-80'
-                    }`}
-                  >
-                    <span className="truncate">
-                      {otherProfile ? `De ${otherProfile.name}` : 'Do outro'}
-                    </span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
-                      householdFilter === 'other' ? 'bg-theme-100 text-theme-800' : 'bg-slate-200 text-slate-600'
-                    }`}>
-                      {otherCompletedCount}
-                    </span>
-                  </button>
+                    return (
+                      <button
+                        key={room.id}
+                        onClick={() => setRoomFilter(room.id)}
+                        className={`flex-shrink-0 px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
+                          isSelected
+                            ? 'bg-theme-600 text-white border-theme-700 shadow-md shadow-theme-500/25 scale-102 ring-2 ring-theme-400/30'
+                            : 'bg-white text-slate-700 border-slate-200/90 hover:border-theme-300 hover:bg-slate-50 shadow-2xs'
+                        }`}
+                      >
+                        <span className="text-sm">{room.icon}</span>
+                        <span>{room.label}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                          isSelected 
+                            ? 'bg-white/25 text-white' 
+                            : isRoomDone 
+                              ? 'bg-emerald-100 text-emerald-800' 
+                              : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {stats.done}/{stats.total}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {/* 4. Lista de Tarefas da Casa */}
@@ -1384,26 +1379,18 @@
                     </div>
                   ) : filteredHouseholdTasks.length === 0 ? (
                     <div className="text-center py-10 bg-white rounded-3xl border border-dashed border-theme-200 p-6 space-y-1">
-                      <div className="text-3xl mb-1">🐭</div>
-                      {householdFilter === 'mine' && (
-                        <>
-                          <p className="text-sm font-bold text-slate-800">Você ainda não concluiu tarefas esta semana</p>
-                          <p className="text-xs text-slate-500">Dê um tick em qualquer tarefa da lista para marcar seus pontos com o Remi!</p>
-                        </>
-                      )}
-                      {householdFilter === 'other' && (
-                        <>
-                          <p className="text-sm font-bold text-slate-800">
-                            {otherProfile ? `${otherProfile.name} ainda não concluiu tarefas esta semana` : 'Nenhuma tarefa concluída pelo outro morador ainda'}
-                          </p>
-                          <p className="text-xs text-slate-500">As tarefas feitas aparecerão aqui conforme forem concluídas.</p>
-                        </>
-                      )}
+                      <div className="text-3xl mb-1">🧹</div>
+                      <p className="text-sm font-bold text-slate-800">
+                        Nenhuma tarefa encontrada neste cômodo
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        Selecione outro cômodo ou adicione novas tarefas para este ambiente!
+                      </p>
                       <button
-                        onClick={() => setHouseholdFilter('all')}
+                        onClick={() => setRoomFilter('all')}
                         className="mt-2 text-xs font-bold text-theme-600 hover:underline inline-block pt-1"
                       >
-                        ← Ver todas as tarefas da casa
+                        ← Ver todos os cômodos da casa
                       </button>
                     </div>
                   ) : (
